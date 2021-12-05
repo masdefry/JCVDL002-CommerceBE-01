@@ -2,7 +2,6 @@ const jwt = require('jsonwebtoken')
 
 const jwtVerify = (req, res, next) => {
     const token = req.headers.token 
-
     if(!token) return res.status(406).send({ error: true, message: 'Error Token', detail: 'Token Tidak Ditemukan!' })
 
     jwt.verify(token, 'abc123', (err, dataToken) => {
@@ -10,7 +9,6 @@ const jwtVerify = (req, res, next) => {
             if(err) throw err 
 
             req.dataToken = dataToken
-            console.log("BEWE dataToken : " + JSON.stringify(dataToken))
             next()
         } catch (error) {
             res.status(500).send({ 

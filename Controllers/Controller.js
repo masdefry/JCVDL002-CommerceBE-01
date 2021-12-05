@@ -150,9 +150,59 @@ const login = async (req, res) => {
             detail: 'Login Berhasil Dilakukan!',
             data: {
                 id: getDataUser[0].id,
-                username: getDataUser[0].username,
                 email: getDataUser[0].email, 
+                fullname: getDataUser[0].fullname,
+                dob: getDataUser[0].dob,
+                gender: getDataUser[0].gender,
+                status: getDataUser[0].status,
                 token: token
+            }
+        })
+
+    } catch (error) {
+        if(error.status){
+            // Kalau error status nya ada, berarti ini error yang kita buat
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        }else{
+            // Kalau error yang disebabkan oleh sistem
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+
+}
+
+const getUserProfile = async (req, res) => {
+    const data = req.dataToken
+
+    let query1 = 'SELECT * FROM users WHERE id = ?'
+    try {
+        await query('Start Transaction')
+        const getDataUser = await query(query1, data.id)
+        .catch((error) => {
+            throw error
+        })
+        
+        await query('Commit')
+
+        res.status(200).send({
+            error: false, 
+            message: 'Get Data User Success',
+            detail: 'Data User',
+            data: {
+                id: getDataUser[0].id,
+                fullname: getDataUser[0].fullname,
+                email: getDataUser[0].email, 
+                fullname: getDataUser[0].fullname, 
+                dob: getDataUser[0].dob,
+                gender: getDataUser[0].gender,
+                status: getDataUser[0].status
             }
         })
 
@@ -190,10 +240,14 @@ const changePassword = async (req, res) => {
         .catch((error) => {
             throw error
         })
-        const updatePasswordUser = await query(query2, [dataBody.new_password, getDataUser[0].id, ])
+        const updatePasswordUser = await query(query2, [dataBody.newPassword, getDataUser[0].id, ])
         .catch((error) => {
             throw error
         })
+
+        console.log("BEWE  changePassword updatePasswordUser : " + JSON.stringify(updatePasswordUser[0]))
+
+        let token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
 
         await query('Commit')
 
@@ -203,7 +257,12 @@ const changePassword = async (req, res) => {
             detail: 'Ubah Password Dilakukan!',
             data: {
                 id: getDataUser[0].id,
-                email: getDataUser[0].email
+                email: getDataUser[0].email, 
+                fullname: getDataUser[0].fullname,
+                dob: getDataUser[0].dob,
+                gender: getDataUser[0].gender,
+                status: getDataUser[0].status,
+                token: token
             }
         })
 
@@ -227,5 +286,6 @@ const changePassword = async (req, res) => {
 module.exports = {
     register,
     login,
-    changePassword
+    changePassword,
+    getUserProfile
 }
