@@ -10,6 +10,7 @@ const jwtVerify = (req, res, next) => {
             if(err) throw err 
 
             req.dataToken = dataToken
+            console.log("BEWE dataToken : " + JSON.stringify(dataToken))
             next()
         } catch (error) {
             res.status(500).send({ 

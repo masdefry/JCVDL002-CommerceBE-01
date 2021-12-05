@@ -10,4 +10,5 @@ const jwtVerify = require('./../Middleware/JWTVerify')
 // Routing
 Router.post('/register', UserController.register)
 Router.post('/login', UserController.login)
+Router.patch('/changePassword', jwtVerify, UserController.changePassword)
 module.exports = Router

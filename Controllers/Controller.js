@@ -25,8 +25,6 @@ const register = async(req, res) => {
         }
      */
     const data = req.body
-    console.log("BEWE REGISTER")
-    console.log("BEWE data : " + JSON.stringify(data))
     // Step1. Kita cek terlebih dahulu emailnya. Apakah sudah terdaftar atau belum. Kalau sudah, kita kirimkan pesan error ke user. Tapi kalau belum terdaftar, kita lanjut ke Step2.
     let query1 = 'SELECT * FROM users WHERE email = ?'
     // Step2. Kita insert data yang telah di submit oleh user
@@ -72,8 +70,6 @@ const register = async(req, res) => {
             created_at : new Date().toISOString().slice(0, 19).replace('T', ' ')
         }
 
-        console.log("BEWE dataToSend : " + JSON.stringify(dataToSend))
-
         const insertData = await query(query2, dataToSend)
         .catch((error) => {
             throw error
@@ -84,7 +80,7 @@ const register = async(req, res) => {
             throw error
         })
 
-        let token = jwtSign({ uid: getDataUser[0].uid, role: getDataUser[0].role })
+        let token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
         
         // Step7. Commit Transaction
         await query('Commit')
@@ -95,7 +91,6 @@ const register = async(req, res) => {
             detail: 'Register Berhasil Dilakukan!',
             data: {
                 id: getDataUser[0].id,
-                uid: getDataUser[0].uid,
                 username: getDataUser[0].username,
                 email: getDataUser[0].email, 
                 token: token
@@ -122,7 +117,6 @@ const register = async(req, res) => {
 
 const login = async (req, res) => {
     const data = req.body
-    console.log("BEWE LOGIN")
 
     let query1 = 'SELECT * FROM users WHERE username = ?'
     let query2 = 'SELECT * FROM users WHERE email = ?'
@@ -146,7 +140,7 @@ const login = async (req, res) => {
             })
         }
         
-        let token = jwtSign({ uid: getDataUser[0].uid, role: getDataUser[0].role })
+        let token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
         
         await query('Commit')
 
@@ -156,7 +150,6 @@ const login = async (req, res) => {
             detail: 'Login Berhasil Dilakukan!',
             data: {
                 id: getDataUser[0].id,
-                uid: getDataUser[0].uid,
                 username: getDataUser[0].username,
                 email: getDataUser[0].email, 
                 token: token
@@ -181,8 +174,58 @@ const login = async (req, res) => {
     }
 
 }
+
+const changePassword = async (req, res) => {
+    const data = req.dataToken
+    const dataBody = req.body
+
+    let query1 = 'SELECT * FROM users WHERE id = ?'
+    let query2 = 'UPDATE users SET password = ? WHERE id = ?'
+    
+
+    try {
+        
+        await query('Start Transaction')
+        const getDataUser = await query(query1, data.id)
+        .catch((error) => {
+            throw error
+        })
+        const updatePasswordUser = await query(query2, [dataBody.new_password, getDataUser[0].id, ])
+        .catch((error) => {
+            throw error
+        })
+
+        await query('Commit')
+
+        res.status(200).send({
+            error: false, 
+            message: 'Change Password Success',
+            detail: 'Ubah Password Dilakukan!',
+            data: {
+                id: getDataUser[0].id,
+                email: getDataUser[0].email
+            }
+        })
+
+    } catch (error) {
+        if(error.status){
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        }else{
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+
+}
  
 module.exports = {
     register,
-    login
+    login,
+    changePassword
 }
