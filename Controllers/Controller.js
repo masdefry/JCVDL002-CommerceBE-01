@@ -25,7 +25,8 @@ const register = async(req, res) => {
         }
      */
     const data = req.body
-
+    console.log("BEWE REGISTER")
+    console.log("BEWE data : " + JSON.stringify(data))
     // Step1. Kita cek terlebih dahulu emailnya. Apakah sudah terdaftar atau belum. Kalau sudah, kita kirimkan pesan error ke user. Tapi kalau belum terdaftar, kita lanjut ke Step2.
     let query1 = 'SELECT * FROM users WHERE email = ?'
     // Step2. Kita insert data yang telah di submit oleh user
@@ -61,13 +62,13 @@ const register = async(req, res) => {
         }
      */
         let dataToSend = {
-            fullname: data.fullname,
+            fullname: data.fullname ? data.fullname : "",
             email: data.email,
             password: data.password,
-            dob: data.dob,
-            gender: data.gender,
-            profile_picture_url: data.profile_picture_url,
-            status: data.status,
+            dob: data.dob ? data.dob : "",
+            gender: data.gender ? data.gender : "",
+            profile_picture_url: data.profile_picture_url ? data.profile_picture_url : "",
+            status: "user",
             created_at : new Date().toISOString().slice(0, 19).replace('T', ' ')
         }
 
@@ -121,6 +122,7 @@ const register = async(req, res) => {
 
 const login = async (req, res) => {
     const data = req.body
+    console.log("BEWE LOGIN")
 
     let query1 = 'SELECT * FROM users WHERE username = ?'
     let query2 = 'SELECT * FROM users WHERE email = ?'
