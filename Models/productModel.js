@@ -31,21 +31,20 @@ class Product {
   }
 
   static getProduct(id, params, callback) {
-    let query = `SELECT idproducts, name, description, url, size 
+    let query = `SELECT idproducts, name, price, description, size 
             FROM products 
-            JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
             JOIN package ON products.idpackage = package.idpackage
-            WHERE idproduct=${id}`;
+            WHERE idproducts=${id}; SELECT url FROM picture_by_product WHERE idproduct=${id}`;
 
-    db.query(query, (err, result) => {
+    db.query(query, [1, 2], (err, results) => {
       if (err) callback({ err: true, message: "query error" });
-
       let product = {
-        idproducts: result[0].idproducts,
-        name: result[0].name,
-        description: result[0].description,
-        size: result[0].size,
-        urls: result.map((data) => data.url),
+        idproducts: results[0][0].idproducts,
+        name: results[0][0].name,
+        price: results[0][0].price,
+        description: results[0][0].description,
+        size: results[0][0].size,
+        urls: results[1].map((data) => data.url),
       };
 
       callback({
