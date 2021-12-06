@@ -31,10 +31,12 @@ class Product {
   }
 
   static getProduct(id, params, callback) {
+    let escaped_id = db.escape(id);
+
     let query = `SELECT idproducts, name, price, description, size 
             FROM products 
             JOIN package ON products.idpackage = package.idpackage
-            WHERE idproducts=${id}; SELECT url FROM picture_by_product WHERE idproduct=${id}`;
+            WHERE idproducts=${escaped_id}; SELECT url FROM picture_by_product WHERE idproduct=${escaped_id}`;
 
     db.query(query, [1, 2], (err, results) => {
       if (err) callback({ err: true, message: "query error" });
