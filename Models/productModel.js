@@ -10,7 +10,9 @@ class Product {
   }
 
   static getProducts(params, callback) {
-    let { page } = params;
+    let { page, filter, order_by } = params;
+    if (filter == undefined) filter = "idproducts";
+    if (order_by == undefined) order_by = "ASC";
     if (page == undefined) page = 1;
 
     let products_per_page = 6;
@@ -19,6 +21,7 @@ class Product {
     let query = `SELECT idproducts, name, price, url FROM products 
         JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
         WHERE picture_by_product.is_main = true
+        ORDER BY ${filter} ${order_by}
         LIMIT ${offset},${products_per_page};`;
 
     db.query(query, (err, result) => {
