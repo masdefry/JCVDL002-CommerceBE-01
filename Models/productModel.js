@@ -41,9 +41,12 @@ class Product {
             JOIN package ON products.idpackage = package.idpackage
             WHERE idproducts=${escaped_id}; 
             SELECT url FROM picture_by_product WHERE idproduct=${escaped_id}; 
-            SELECT SUM(qty) as 'all_stock' FROM stock_product_by_warehouse WHERE idproducts=${escaped_id}`;
+            SELECT SUM(qty) as 'all_stock' FROM stock_product_by_warehouse WHERE idproducts=${escaped_id};
+            SELECT name FROM category
+            JOIN product_by_category ON product_by_category.idcategory = category.idcategory
+            WHERE product_by_category.idproduct = ${escaped_id}`;
 
-    db.query(query, [1, 2, 3], (err, results) => {
+    db.query(query, [1, 2, 3, 4], (err, results) => {
       if (err) callback({ err: true, message: "query error" });
       let product = {
         idproducts: results[0][0].idproducts,
@@ -52,6 +55,7 @@ class Product {
         description: results[0][0].description,
         size: results[0][0].size,
         stock: results[2][0].all_stock,
+        categories: results[3].map((data) => data.name),
         urls: results[1].map((data) => data.url),
       };
 
