@@ -13,8 +13,7 @@ app.get("/", (req, res) => {
 });
 
 // import routers
-const adminRouter = require("./Routers");
-
+const adminRouter = require("./Routers/adminRouter");
 app.use("/admin", adminRouter);
 
 app.listen(PORT, () => console.log("API RUNNING ON PORT " + PORT));
