@@ -12,6 +12,9 @@ const hashPassword = require('./../Helpers/HashPassword')
 // Import JWTSign
 const jwtSign = require('./../Helpers/JWTSign')
 
+const nodemailer = require('nodemailer');
+const randtoken = require('rand-token');
+
 const register = async(req, res) => {
     // Step0. Kita ambil semua datanya yang dikirim oleh client
     /**
@@ -66,7 +69,7 @@ const register = async(req, res) => {
             dob: data.dob ? data.dob : "",
             gender: data.gender ? data.gender : "",
             profile_picture_url: data.profile_picture_url ? data.profile_picture_url : "",
-            status: "user",
+            status: "deactive",
             created_at : new Date().toISOString().slice(0, 19).replace('T', ' ')
         }
 
@@ -230,22 +233,23 @@ const changePassword = async (req, res) => {
     const dataBody = req.body
 
     let query1 = 'SELECT * FROM users WHERE id = ?'
+    let query3 = 'SELECT * FROM users WHERE email = ?'
     let query2 = 'UPDATE users SET password = ? WHERE id = ?'
-    
 
     try {
-        
         await query('Start Transaction')
-        const getDataUser = await query(query1, data.id)
+        let paramGetUser = dataBody.email ? dataBody.email : data.id;
+        let queryUser = dataBody.email ? query3 : query1;
+        console.log("BEWE queryUser : " + queryUser)
+        const getDataUser = await query(queryUser, paramGetUser)
         .catch((error) => {
             throw error
         })
+
         const updatePasswordUser = await query(query2, [dataBody.newPassword, getDataUser[0].id, ])
         .catch((error) => {
             throw error
         })
-
-        console.log("BEWE  changePassword updatePasswordUser : " + JSON.stringify(updatePasswordUser[0]))
 
         let token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
 
@@ -282,10 +286,147 @@ const changePassword = async (req, res) => {
     }
 
 }
+
+const sendEmailLink = async (req, res) => {
+    const email = req.body.email
+
+    let queryGetUser = 'SELECT * FROM users WHERE email = ?';
+    let queryMagicLink = 'INSERT INTO magiclink SET ?';
+    try {
+        await query('Start Transaction')
+        const getDataUser = await query(queryGetUser, email)
+        .catch((error) => {
+            throw error;
+        })
+
+        if(getDataUser[0].status == "deactive"){
+            let token = randtoken.generate(20);
+            const transporter = await nodemailer.createTransport({
+                service: 'gmail',
+                secure: false,
+                port: 587 ,
+                auth: {
+                    user: 'hsbwarehouse29@gmail.com', // Email Sender
+                    pass: 'wucdohrqncunyojy' // Password Windows Computer
+                },
+                tls: {
+                    rejectUnauthorized: false
+                  }
+            })
+        
+            transporter.sendMail({
+                from: 'hsbwarehouse29@gmail.com', // Sender Address
+                to: email, // Email User
+                subject: 'Email verification - warehouse.com',
+                html: '<p>You requested for email verification, kindly use this <a href="http://localhost:5000/verifyEmail?token=' + token + '">link</a> to verify your email address</p>'
+            })
+            .then((response) => {
+                if(response){
+                    let today = new Date();
+                    today.setMinutes(today.getMinutes() + 10);
+                    let tokenObj = {
+                        hash : token,
+                        id : getDataUser[0].id,
+                        expire_on: today.toISOString().slice(0, 19).replace('T', ' ')
+                    }
+                    query(queryMagicLink, tokenObj)
+                    .catch((error) => {
+                        throw error
+                    })
+                }
+            })
+            .catch((error) => {
+                throw error
+            })
+            
+        }else{
+            error.status = 500;
+            error.message = "User's already verified.";
+            throw error;
+        }
+
+        await query('Commit')
+
+        res.status(200).send({
+            error: false, 
+            message: 'Email verification is sent.',
+            detail: 'Email verification is sent.',
+            data: {
+                id: getDataUser[0].id,
+                fullname: getDataUser[0].fullname,
+                email: getDataUser[0].email, 
+                fullname: getDataUser[0].fullname, 
+                dob: getDataUser[0].dob,
+                gender: getDataUser[0].gender,
+                status: getDataUser[0].status
+            }
+        })
+
+    } catch (error) {
+        if(error.status){
+            // Kalau error status nya ada, berarti ini error yang kita buat
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        }else{
+            // Kalau error yang disebabkan oleh sistem
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+}
+
+const verifyEmail = async (req, res) =>{
+    const token = req.query.token;
+    let queryActivate = "UPDATE users SET status = 'active' WHERE id = ?";
+    let queryGetMagicLink = 'SELECT * FROM magiclink WHERE hash = ?';
+    try{
+        await query('Start Transaction')
+
+        const getMagicLink = await query(queryGetMagicLink, token)
+        .catch((error) => {
+            throw error;
+        })
+
+        const activateUser = await query(queryActivate, getMagicLink[0].id)
+        .catch((error) => {
+            throw error;
+        })
+
+        await query('Commit')
+
+        res.status(200).send({
+            error: false, 
+            message: 'Email is verified.',
+            detail: 'Email is verified.',
+        })
+    }catch(error){
+        if(error.status){
+            // Kalau error status nya ada, berarti ini error yang kita buat
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        }else{
+            // Kalau error yang disebabkan oleh sistem
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+}
  
 module.exports = {
     register,
     login,
     changePassword,
-    getUserProfile
+    getUserProfile,
+    sendEmailLink,
+    verifyEmail
 }
