@@ -14,5 +14,5 @@ Router.patch('/changePassword', jwtVerify, UserController.changePassword)
 Router.patch('/forgotPassword',  UserController.changePassword)
 Router.get('/profile', jwtVerify, UserController.getUserProfile)
 Router.post('/sendEmail', UserController.sendEmailLink)
-Router.post('/verifyEmail', UserController.verifyEmail)
+Router.get('/verifyEmail', UserController.verifyEmail)
 module.exports = Router

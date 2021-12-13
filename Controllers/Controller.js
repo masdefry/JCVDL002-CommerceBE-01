@@ -65,7 +65,7 @@ const register = async(req, res) => {
         let dataToSend = {
             fullname: data.fullname ? data.fullname : "",
             email: data.email,
-            password: data.password,
+            password: hashedPassword,
             dob: data.dob ? data.dob : "",
             gender: data.gender ? data.gender : "",
             profile_picture_url: data.profile_picture_url ? data.profile_picture_url : "",
@@ -84,6 +84,14 @@ const register = async(req, res) => {
         })
 
         let token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
+
+        if(token){
+            let getSendEmailVerification = await sendEmailVerification(data.email)
+            .catch((error) => {
+                throw error
+            })
+            console.log("BEWE getSendEmailVerification : " + getSendEmailVerification)
+        }
         
         // Step7. Commit Transaction
         await query('Commit')
@@ -143,7 +151,15 @@ const login = async (req, res) => {
             })
         }
         
-        let token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
+        let token = "";
+        let hashedPassword = hashPassword(data.password);
+        if(getDataUser[0].password == hashedPassword){
+            token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
+        }else{
+            error.status = 500
+            error.message = "Password's not matched."
+            throw error
+        }
         
         await query('Commit')
 
@@ -380,6 +396,73 @@ const sendEmailLink = async (req, res) => {
     }
 }
 
+const sendEmailVerification = async (email) => {
+
+    let queryGetUser = 'SELECT * FROM users WHERE email = ?';
+    let queryMagicLink = 'INSERT INTO magiclink SET ?';
+    try {
+        await query('Start Transaction')
+        const getDataUser = await query(queryGetUser, email)
+        .catch((error) => {
+            throw error;
+        })
+
+        if(getDataUser[0].status == "deactive"){
+            let token = randtoken.generate(20);
+            const transporter = await nodemailer.createTransport({
+                service: 'gmail',
+                secure: false,
+                port: 587 ,
+                auth: {
+                    user: 'hsbwarehouse29@gmail.com', // Email Sender
+                    pass: 'wucdohrqncunyojy' // Password Windows Computer
+                },
+                tls: {
+                    rejectUnauthorized: false
+                  }
+            })
+        
+            transporter.sendMail({
+                from: 'hsbwarehouse29@gmail.com', // Sender Address
+                to: email, // Email User
+                subject: 'Email verification - warehouse.com',
+                html: '<p>You requested for email verification, kindly use this <a href="http://localhost:5000/verifyEmail?token=' + token + '">link</a> to verify your email address</p>'
+            })
+            .then((response) => {
+                if(response){
+                    let today = new Date();
+                    today.setMinutes(today.getMinutes() + 10);
+                    let tokenObj = {
+                        hash : token,
+                        id : getDataUser[0].id,
+                        expire_on: today.toISOString().slice(0, 19).replace('T', ' ')
+                    }
+                    query(queryMagicLink, tokenObj)
+                    .catch((error) => {
+                        throw error
+                    })
+                }
+            })
+            .catch((error) => {
+                throw error
+            })
+            
+        }else{
+            error.status = 500;
+            error.message = "User's already verified.";
+            throw error;
+        }
+
+        await query('Commit')
+
+        return true;
+
+    } catch (error) {
+        
+        return false;
+    }
+}
+
 const verifyEmail = async (req, res) =>{
     const token = req.query.token;
     let queryActivate = "UPDATE users SET status = 'active' WHERE id = ?";
@@ -404,6 +487,7 @@ const verifyEmail = async (req, res) =>{
             message: 'Email is verified.',
             detail: 'Email is verified.',
         })
+        // res.redirect('http://localhost:3000');
     }catch(error){
         if(error.status){
             // Kalau error status nya ada, berarti ini error yang kita buat
