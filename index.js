@@ -17,6 +17,10 @@ const PORT = 5000
 // Import Routers
 const UserRouter = require('./Routers/Routers')
 
+// import routers
+const adminRouter = require("./Routers/adminRouter");
+app.use("/admin", adminRouter);
+
 // Routing
 app.get('/',(req, res) => {
     res.status(200).send(
