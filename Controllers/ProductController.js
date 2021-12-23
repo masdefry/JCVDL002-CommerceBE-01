@@ -16,6 +16,7 @@ const nodemailer = require('nodemailer');
 const randtoken = require('rand-token');
 
 const login = async (req, res) => {
+    console.log("Ini login product")
     const data = req.body
 
     let query1 = 'SELECT * FROM users WHERE username = ?'
