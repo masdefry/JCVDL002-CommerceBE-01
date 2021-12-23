@@ -87,10 +87,9 @@ const register = async (req, res) => {
 
         if (token) {
             let getSendEmailVerification = await sendEmailVerification(data.email)
-                .catch((error) => {
-                    throw error
-                })
-            console.log("BEWE getSendEmailVerification : " + getSendEmailVerification)
+            .catch((error) => {
+                throw error
+            })
         }
 
         // Step7. Commit Transaction
@@ -260,7 +259,6 @@ const updateUser = async (req, res) => {
     const data = req.dataToken
     const dataBody = req.body
     const header = req.headers
-    console.log("BEWE data 1: " + JSON.stringify(data))
 
     let query1 = 'SELECT * FROM users WHERE id = ?'
     let query2 = 'UPDATE users SET fullname = ?, dob = ?, gender = ?, profile_picture_url = ? WHERE id = ?'
@@ -276,18 +274,16 @@ const updateUser = async (req, res) => {
             gender: dataBody.gender ? dataBody.gender : "",
             profile_picture_url: dataBody.profile_picture_url ? dataBody.profile_picture_url : ""
         }
-        console.log("BEWE 1: " + JSON.stringify(dataToSend) + " - " + data.id)
         const updatePasswordUser = await query(query2, [dataToSend.fullname, dataToSend.dob, dataToSend.gender, dataToSend.profile_picture_url, data.id])
-            .catch((error) => {
-                throw error
-            })
+        .catch((error) => {
+            throw error
+        })
 
         const getDataUser = await query(query1, data.id)
-            .catch((error) => {
-                throw error
-            })
+        .catch((error) => {
+            throw error
+        })
 
-        console.log("BEWE 3: " + JSON.stringify(getDataUser))
 
         await query('Commit')
 
@@ -304,7 +300,6 @@ const updateUser = async (req, res) => {
         })
 
     } catch (error) {
-        console.log("BEWE error : " + JSON.stringify(error))
         if (error.status) {
             res.status(error.status).send({
                 error: true,
@@ -333,7 +328,6 @@ const changePassword = async (req, res) => {
         await query('Start Transaction')
         let paramGetUser = dataBody.email ? dataBody.email : data.id;
         let queryUser = dataBody.email ? query3 : query1;
-        console.log("BEWE queryUser : " + queryUser)
         const getDataUser = await query(queryUser, paramGetUser)
             .catch((error) => {
                 throw error
@@ -583,6 +577,164 @@ const verifyEmail = async (req, res) => {
     }
 }
 
+const createAddress = async (req, res) => {
+    // Step0. Kita ambil semua datanya yang dikirim oleh client
+    /**
+     * {
+            "idaddress": "",
+            "address": "Jln Lengkong Gudang",
+            "is_default": "0",
+            "idusers" : "1"
+        }
+     */
+    const data = req.dataToken
+    const dataBody = req.body
+    let query1 = 'INSERT INTO addresses_by_user SET ?'
+    let query2 = 'SELECT * FROM addresses_by_user WHERE idusers = ?'
+    try {
+        await query('Start Transaction')
+
+        let dataToSend = {
+            address: dataBody.address,
+            is_default: "0",
+            idusers : data.id
+        }
+
+        const insertData = await query(query1, dataToSend)
+        .catch((error) => {
+            throw error
+        })
+
+        const getAddress = await query(query2, data.id)
+        .catch((error) => {
+            throw error
+        })
+
+        // Step7. Commit Transaction
+        await query('Commit')
+
+        res.status(200).send({
+            error: false,
+            message: 'Create Address Success',
+            detail: 'Create Address Success!',
+            data : [...getAddress]
+        })
+        // data: {
+        //     address: getAddress[0].address,
+        //     is_default: getAddress[0].is_default,
+        //     idusers: getAddress[0].idusers,
+        // }
+
+    } catch (error) {
+        if (error.status) {
+            // Kalau error status nya ada, berarti ini error yang kita buat
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        } else {
+            // Kalau error yang disebabkan oleh sistem
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+}
+
+const getCurrentAddress = async (req, res) => {
+    const data = req.dataToken
+    let query1 = 'SELECT * FROM addresses_by_user WHERE idusers = ?'
+    try {
+        await query('Start Transaction')
+        const getDataAddressById = await query(query1, data.id)
+        .catch((error) => {
+            throw error
+        })
+        await query('Commit')
+
+        res.status(200).send({
+            error: false,
+            message: 'Get Data Address',
+            detail: 'Get Data Address',
+            data: [...getDataAddressById]
+        })
+
+    } catch (error) {
+        if (error.status) {
+            // Kalau error status nya ada, berarti ini error yang kita buat
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        } else {
+            // Kalau error yang disebabkan oleh sistem
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+
+}
+
+const updateDeafultAddress = async (req, res) => {
+    const data = req.dataToken
+    const dataBody = req.body
+
+    let query1 = 'UPDATE addresses_by_user SET is_default = ?  WHERE idaddress = ?'
+    let query2 = 'UPDATE addresses_by_user SET is_default = ? WHERE idaddress = ? AND is_default = 1'
+    let query3 = 'SELECT * FROM addresses_by_user WHERE idusers = ? AND is_default = 1'
+    let query4 = 'SELECT * FROM addresses_by_user WHERE idusers = ?'
+
+    try {
+        await query('Start Transaction')
+        const getDefaultCurrentAddress = await query(query3, data.id)
+        .catch((error) => {
+            throw error
+        })
+        if(getDefaultCurrentAddress.length > 0){
+            const updateCurrentAddress = await query(query2, [0, getDefaultCurrentAddress[0].idaddress])
+            .catch((error) => {
+                throw error
+            })
+        }
+        const updateNextAddress = await query(query1, [1, dataBody.idaddress])
+        .catch((error) => {
+            throw error
+        })
+        const getDataAddressById = await query(query4, data.id)
+        .catch((error) => {
+            throw error
+        })
+        await query('Commit')
+
+        res.status(200).send({
+            error: false,
+            message: 'Update Default Address Success',
+            detail: 'Update Default Address Success!',
+            data: [...getDataAddressById]
+        })
+
+    } catch (error) {
+        if (error.status) {
+            res.status(error.status).send({
+                error: true,
+                message: error.message,
+                detail: error.detail
+            })
+        } else {
+            res.status(500).send({
+                error: true,
+                message: error.message
+            })
+        }
+    }
+
+}
+
 module.exports = {
     register,
     login,
@@ -590,5 +742,8 @@ module.exports = {
     getUserProfile,
     sendEmailLink,
     verifyEmail,
-    updateUser
+    updateUser,
+    createAddress,
+    getCurrentAddress,
+    updateDeafultAddress
 }
