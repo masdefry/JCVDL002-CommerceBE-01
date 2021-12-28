@@ -6,76 +6,40 @@ const util = require('util')
 const db = require('../Database/Connection')
 const query = util.promisify(db.query).bind(db) // Untuk Melakukan Rollback
 
-// Import Hashing Password
-const hashPassword = require('../Helpers/HashPassword')
-
-// Import JWTSign
-const jwtSign = require('../Helpers/JWTSign')
-
-const nodemailer = require('nodemailer');
-const randtoken = require('rand-token');
-
-const login = async (req, res) => {
-    console.log("Ini login product")
+const getProducts = async (req, res) => {
     const data = req.body
 
-    let query1 = 'SELECT * FROM users WHERE username = ?'
-    let query2 = 'SELECT * FROM users WHERE email = ?'
+    let query1 = "SELECT p.idproducts, p.name, p.price, pp.url, SUM(spw.qty) 'total_stock'" +
+                    " FROM products p " +
+                    " JOIN picture_by_product pp " +
+                    " ON p.idproducts = pp.idproduct " +
+                    " JOIN stock_product_by_warehouse spw " +
+                    " ON spw.idproducts = p.idproducts " +
+                    " GROUP BY p.idproducts ";
 
     try {
-        if ((!data.username || !data.email) && !data.password) throw { status: 406, message: 'Data Null', detail: 'Data Tidak Lengkap!' }
-
         await query('Start Transaction')
 
-        let getDataUser = null
-        if (data.username) {
-            if (data.username.length < 6) throw { status: 406, message: 'Data Invalid', detail: 'Username Minimal 6 Karakter!' }
-            getDataUser = await query(query1, data.username)
-                .catch((error) => {
-                    throw error
-                })
-        } else if (data.email) {
-            getDataUser = await query(query2, data.email)
-                .catch((error) => {
-                    throw error
-                })
-        }
-
-        let token = "";
-        let hashedPassword = hashPassword(data.password);
-        token = jwtSign({ id: getDataUser[0].id, status: getDataUser[0].status })
-
+        let getDataProducts =  getDataUser = await query(query1, data.username)
+        .catch((error) => {
+            throw error
+        })
 
         await query('Commit')
 
-        if (getDataUser[0].password == hashedPassword) {
-            res.status(200).send({
+        if (getDataProducts[0].length <= 0) {
+            res.status(401).send({
                 error: false,
-                message: 'Login Success',
-                detail: 'Login Berhasil Dilakukan!',
-                data: {
-                    id: getDataUser[0].id,
-                    email: getDataUser[0].email,
-                    fullname: getDataUser[0].fullname,
-                    dob: getDataUser[0].dob,
-                    gender: getDataUser[0].gender,
-                    status: getDataUser[0].status,
-                    token: token
-                }
+                message: 'Data product is empty',
+                detail: 'Data product is empty',
+                data: []
             })
         } else {
-            res.status(401).send({
+            res.status(200).send({
                 error: true,
-                message: 'Email/password not matched.',
-                detail: 'Password not matched!',
-                data: {
-                    id: getDataUser[0].id,
-                    email: getDataUser[0].email,
-                    fullname: getDataUser[0].fullname,
-                    dob: getDataUser[0].dob,
-                    gender: getDataUser[0].gender,
-                    status: getDataUser[0].status
-                }
+                message: 'Data Product',
+                detail: 'Data Product',
+                data: [...getDataProducts]
             })
         }
 
@@ -100,5 +64,5 @@ const login = async (req, res) => {
 }
 
 module.exports = {
-    login
+    getProducts
 }
