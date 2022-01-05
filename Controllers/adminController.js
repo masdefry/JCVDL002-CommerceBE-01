@@ -15,10 +15,13 @@ const getData = (req, res) => {
   let scriptQuery = `SELECT * FROM products
   JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
   JOIN product_by_category ON products.idproducts = product_by_category.idproduct
+  WHERE idcategory > 1
   LIMIT ${db.escape(offset)},${db.escape(limit)}`;
 
-  let scriptQuery2 = `SELECT CEIL(COUNT(*)/6) as maxPage FROM products JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
-  JOIN product_by_category ON products.idproducts = product_by_category.idproduct`;
+  let scriptQuery2 = `SELECT CEIL(COUNT(*)/6) as maxPage FROM products 
+  JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
+  JOIN product_by_category ON products.idproducts = product_by_category.idproduct
+  WHERE idcategory > 1`;
 
   db.query(scriptQuery, (err, results) => {
     if (err) res.status(500).send(err);
@@ -26,7 +29,7 @@ const getData = (req, res) => {
     db.query(scriptQuery2, (err2, results2) => {
       if (err2) res.status(500).send(err);
 
-      var info = {
+      let info = {
         maxPage: results2,
         page: page,
         products: results,
@@ -39,7 +42,9 @@ const getData = (req, res) => {
 
 const getDetail = async (req, res) => {
   const idDetail = db.escape(req.params.id);
-  let getQuery = `SELECT * FROM products JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
+  let getQuery = `SELECT * FROM products
+  JOIN picture_by_product ON products.idproducts = picture_by_product.idproduct
+  JOIN product_by_category ON products.idproducts = product_by_category.idproduct
   WHERE idproducts = ${idDetail}`;
 
   db.query(getQuery, (err, results) => {
@@ -108,59 +113,112 @@ const editData = async (req, res) => {
   try {
     const singleUploadAwait = util.promisify(singleUpload).bind(singleUpload);
     await singleUploadAwait(req, res);
+
     if (req.files.length === 0 || req.files === undefined) {
-      console.log(req.body.data);
-      let dataUpdate = [];
-      let dataObject = JSON.parse(req.body.data);
-      // console.log(`Hasil perubahan` + dataObject); //hasil parsing
+      //    DATA ONLY
+      let dataParse = JSON.parse(req.body.data);
 
-      for (let prop in dataObject) {
-        dataUpdate.push(`${prop} = ${db.escape(dataObject[prop])}`);
+      let dataUpdate1 = [];
+      let dataUpdate2 = [];
+      let dataUpdate3 = [];
+
+      let dataObject1 = {
+        name: dataParse.name,
+        description: dataParse.description,
+        price: dataParse.price,
+        idpackage: dataParse.idpackage,
+      };
+
+      let dataObject2 = { idcategory: dataParse.idcategory };
+
+      let dataObject3 = { is_main: dataParse.is_main };
+
+      for (let prop in dataObject1) {
+        dataUpdate1.push(`${prop} = ${db.escape(dataObject1[prop])}`);
       }
-      // console.log(dataUpdate); //hasil push array data
 
-      let updateQuery = `UPDATE products set ${dataUpdate} where idproducts = ${req.params.id}`;
-      // console.log(updateQuery);
+      for (let prop in dataObject2) {
+        dataUpdate2.push(`${prop} = ${db.escape(dataObject2[prop])}`);
+      }
 
-      db.query(updateQuery, (err, results) => {
+      for (let prop in dataObject3) {
+        dataUpdate3.push(`${prop} = ${db.escape(dataObject3[prop])}`);
+      }
+
+      let updateQuery1 = `UPDATE products set ${dataUpdate1} where idproducts = ${req.params.id}`;
+      console.log(updateQuery1);
+      let updateQuery2 = `UPDATE product_by_category set ${dataUpdate2} where idproduct = ${req.params.id} AND idcategory > 1`;
+      console.log(updateQuery2);
+      let updateQuery3 = `UPDATE picture_by_product set ${dataUpdate3} where idproduct = ${req.params.id}`;
+      console.log(updateQuery3);
+
+      db.query(updateQuery1, (err, results) => {
         if (err) res.status(500).send(err);
-        res.status(200).send({
-          message: `Success Edit Data Only for Product no ${req.params.id}... ✔ `,
+        db.query(updateQuery2, (err2, results2) => {
+          if (err2) res.status(500).send(err2);
+          db.query(updateQuery3, (err3, results3) => {
+            if (err3) res.status(500).send(err3);
+            res.status(200).send({
+              message: `Success Edit Data Only for Product no ${req.params.id}... ✔ `,
+            });
+          });
         });
       });
     } else {
-      // IMAGE
-      // console.log(req.files);
+      //   IMAGE
       let file = req.files;
-      console.log(`Check Image Path` + file[0].path + ` ✔ Found`);
       let filePath = file[0].path.slice(7);
+      // console.log(`Check Image Path ` + filePath + ` ✔ Found`);
 
-      //  DATA
-      console.log(req.body.data);
-      let dataUpdate = [];
-      let dataObject = JSON.parse(req.body.data);
-      // console.log(`Hasil perubahan` + dataObject); //hasil parsing
+      //     DATA
+      let dataParse = JSON.parse(req.body.data);
 
-      for (let prop in dataObject) {
-        dataUpdate.push(`${prop} = ${db.escape(dataObject[prop])}`);
+      let dataUpdate1 = [];
+      let dataUpdate2 = [];
+      let dataUpdate3 = [];
+
+      let dataObject1 = {
+        name: dataParse.name,
+        description: dataParse.description,
+        price: dataParse.price,
+        idpackage: dataParse.idpackage,
+      };
+      let dataObject2 = { idcategory: dataParse.idcategory };
+      let dataObject3 = { is_main: dataParse.is_main };
+
+      for (let prop in dataObject1) {
+        dataUpdate1.push(`${prop} = ${db.escape(dataObject1[prop])}`);
       }
-      // console.log(dataUpdate); //hasil push array data
+      for (let prop in dataObject2) {
+        dataUpdate2.push(`${prop} = ${db.escape(dataObject2[prop])}`);
+      }
+      for (let prop in dataObject3) {
+        dataUpdate3.push(`${prop} = ${db.escape(dataObject3[prop])}`);
+      }
 
-      let updateQuery = `UPDATE products set ${dataUpdate} where idproducts = ${req.params.id}`;
-      // console.log(updateQuery);
+      let updateQuery1 = `UPDATE products set ${dataUpdate1} where idproducts = ${req.params.id}`;
+      console.log(updateQuery1);
+      let updateQuery2 = `UPDATE product_by_category set ${dataUpdate2} where idproduct = ${req.params.id}`;
+      console.log(updateQuery2);
+      let updateQuery3 = `UPDATE picture_by_product set ${dataUpdate3} where idproduct = ${req.params.id}`;
+      console.log(updateQuery3);
+      let updateQuery4 = `UPDATE picture_by_product set url = ${db.escape(
+        filePath
+      )} where idproduct = ${req.params.id}`;
+      console.log(updateQuery4);
 
-      db.query(updateQuery, (err, results) => {
+      db.query(updateQuery1, (err, results) => {
         if (err) res.status(500).send(err);
-
-        let updateQuery2 = `UPDATE picture_by_product set url = ${db.escape(
-          filePath
-        )} where idproduct = ${req.params.id}`;
-
-        // console.log(updateQuery2);
         db.query(updateQuery2, (err2, results2) => {
           if (err2) res.status(500).send(err2);
-          res.status(200).send({
-            message: `Success Edit Data & Image for Product no ${req.params.id}... ✔ `,
+          db.query(updateQuery3, (err3, results3) => {
+            if (err3) res.status(500).send(err3);
+            db.query(updateQuery4, (err4, results4) => {
+              if (err4) res.status(500).send(err4);
+              res.status(200).send({
+                message: `Success Edit Data & Image for Product no ${req.params.id}... ✔ `,
+              });
+            });
           });
         });
       });
@@ -169,51 +227,6 @@ const editData = async (req, res) => {
     console.log(error);
   }
 };
-
-// const editData = async (req, res) => {
-//   try {
-//     const singleUploadAwait = util.promisify(singleUpload).bind(singleUpload);
-//     await singleUploadAwait(req, res);
-//     if (req.files.length === 0 || req.files === undefined)
-//       throw { message: "File Not Found, Try Again" };
-
-//     // console.log(req.files);
-//     let file = req.files;
-//     console.log(`Check Image Path` + file[0].path + ` ✔ Found`);
-//     let filePath = file[0].path.slice(7);
-//     console.log(req.body.data);
-
-//     let dataUpdate = [];
-//     let dataObject = JSON.parse(req.body.data);
-//     // console.log(`Hasil perubahan` + dataObject); //hasil parsing
-
-//     for (let prop in dataObject) {
-//       dataUpdate.push(`${prop} = ${db.escape(dataObject[prop])}`);
-//     }
-//     // console.log(dataUpdate); //hasil push array data
-
-//     let updateQuery = `UPDATE products set ${dataUpdate} where idproducts = ${req.params.id}`;
-//     // console.log(updateQuery);
-
-//     db.query(updateQuery, (err, results) => {
-//       if (err) res.status(500).send(err);
-
-//       let updateQuery2 = `UPDATE picture_by_product set url = ${db.escape(
-//         filePath
-//       )} where idproduct = ${req.params.id}`;
-
-//       // console.log(updateQuery2);
-//       db.query(updateQuery2, (err2, results2) => {
-//         if (err2) res.status(500).send(err2);
-//         res.status(200).send({
-//           message: `Success Edit Data Product no ${req.params.id}... ✔ `,
-//         });
-//       });
-//     });
-//   } catch (error) {
-//     console.log(error);
-//   }
-// };
 
 const deleteData = (req, res) => {
   let deleteQuery1 = `DELETE from picture_by_product where idproduct = ${db.escape(
